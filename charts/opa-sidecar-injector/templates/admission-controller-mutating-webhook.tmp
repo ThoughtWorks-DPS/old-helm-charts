@@ -1,0 +1,26 @@
+{{- if not .Values.selfSignedCertificate -}}
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "opa-sidecar-injector.fullname" . }}
+webhooks:
+  - name: istio.openpolicyagent.org
+    clientConfig:
+      service:
+        name: {{ include "opa-sidecar-injector.fullname" . }}-admission-controller
+        namespace: {{ .Release.Namespace }}
+        path: "/v0/data/istio/inject"
+      caBundle: |-
+        
+    rules:
+      - operations: ["CREATE"]
+        apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+    namespaceSelector:
+      matchLabels:
+        {{ .Values.namepaceAnnotation.matchLabel }}: {{ .Values.namepaceAnnotation.matchKey }}
+    failurePolicy: Fail
+    admissionReviewVersions: ["v1beta1"]
+    sideEffects: None
+{{- end }}

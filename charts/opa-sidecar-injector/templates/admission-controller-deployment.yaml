@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "opa-sidecar-injector.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "opa-sidecar-injector.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "opa-sidecar-injector.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      name: {{ include "opa-sidecar-injector.fullname" . }}
+      namespace: {{ .Release.Namespace }}
+      labels:
+        {{- include "opa-sidecar-injector.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "opa-sidecar-injector.fullname" . }}
+      {{- if .Values.selfSignedCertificate }}
+      initContainers:
+        - name: certificate-init-container
+          image: {{ .Values.initCertificateImage.repository }}:{{ .Values.initCertificateImage.tag }}
+          imagePullPolicy: {{ .Values.initCertificateImage.pullPolicy }}  
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          args:
+            - "--common-name={{ .Values.certificate.commonName | default (include "opa-sidecar-injector.certificate.commonName" .) }}"
+            - "--organization={{ .Values.certificate.organization | default (include "opa-sidecar-injector.certificate.organization" .) }}"
+            - "--organizational-unit={{ .Values.certificate.organizationalUnit | default (include "opa-sidecar-injector.certificate.organizationalUnit" .) }}"
+            - "--country={{ .Values.certificate.country | default (include "opa-sidecar-injector.certificate.country" .) }}"
+            - "--province={{ .Values.certificate.province | default (include "opa-sidecar-injector.certificate.province" .) }}"
+            - "--locality={{ .Values.certificate.locality | default (include "opa-sidecar-injector.certificate.locality" .) }}"
+            - "--street-address={{ .Values.certificate.streetAddress | default (include "opa-sidecar-injector.certificate.streetAddress" .) }}"
+            - "--postal-code={{ .Values.certificate.postalCode | default (include "opa-sidecar-injector.certificate.postalCode" .) }}"
+            
+            - "--service-names={{ .Values.mutatingWebhook.serviceNames | default (include "opa-sidecar-injector.mutatingWebhook.serviceNames" .) }}"
+            - "--namespace={{ .Values.mutatingWebhook.serviceNamespace | default (include "opa-sidecar-injector.mutatingWebhook.serviceNamespace" .) }}"
+            - "--cert-dir={{ .Values.certificate.certDir | default (include "opa-sidecar-injector.certificate.certDir" .) }}"
+          volumeMounts:
+            - name: tls
+              mountPath: {{ .Values.certificate.certDir | default (include "opa-sidecar-injector.certificate.certDir" .) }}
+
+        - name: mutatingwebhook-init-container
+          image: {{ .Values.initMutatingWebhookImage.repository }}:{{ .Values.initMutatingWebhookImage.tag }}
+          imagePullPolicy: {{ .Values.initMutatingWebhookImage.pullPolicy }}
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          args:
+
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/tls
+      {{- end }}
+      containers:
+        - name: opa
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default (include "opa-sidecar-injector.imageTag" .) }}"
+          args:
+            - "run"
+            - "--server"
+            - "--tls-cert-file={{ .Values.certificate.certDir | default (include "opa-sidecar-injector.certificate.certDir" .) }}/tls.crt"
+            - "--tls-private-key-file={{ .Values.certificate.certDir | default (include "opa-sidecar-injector.certificate.certDir" .) }}/tls.key"
+            - "--addr=0.0.0.0:{{ .Values.service.port }}"
+            - "/policies/inject.rego"
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          livenessProbe:
+            httpGet:
+              path: /health?plugins
+              scheme: HTTPS
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health?plugins
+              scheme: HTTPS
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+          volumeMounts:
+            - name: inject-policy
+              readOnly: true
+              mountPath: /policies
+
+            - name: tls
+              readOnly: true
+              mountPath: {{ .Values.certificate.certDir | default (include "opa-sidecar-injector.certificate.certDir" .) }}
+
+      volumes:
+        - name: inject-policy
+          configMap:
+            name: {{ include "opa-sidecar-injector.fullname" . }}-inject-policy
+
+        {{- if .Values.selfSignedCertificate }}
+        - name: tls
+          emptyDir: {}
+        {{- else }}
+        - name: tls
+          secret:
+            secretName: {{ include "opa-sidecar-injector.fullname" . }}-certificate
+        {{- end }}

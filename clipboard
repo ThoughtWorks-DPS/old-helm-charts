@@ -1,0 +1,37 @@
+
+
+
+
+{{/*
+Create default mutatingwebhook-init-container parameters
+*/}}
+{{- define "opa-sidecar-injector.mutatingWebhook.webhookName" -}}
+{{- default "opa-injector.twdps.io" .Values.mutatingWebhook.webhookName }}
+{{- end }}
+{{- define "opa-sidecar-injector.mutatingWebhook.objectMetaName" -}}
+{{- default "opa-injector.twdps.io" .Values.mutatingWebhook.objectMetaName }}
+{{- end }}
+{{- define "opa-sidecar-injector.mutatingWebhook.serviceName" -}}
+{{- default (include "opa-sidecar-injector.serviceName" .) .Values.mutatingWebhook.serviceName }}
+{{- end }}
+{{- define "opa-sidecar-injector.mutatingWebhook.serviceNamespace" -}}
+{{- default "$(NAMESPACE)" .Values.mutatingWebhook.serviceNamespace }}
+{{- end }}
+{{- define "opa-sidecar-injector.mutatingWebhook.servicePath" -}}
+{{- default "/v0/data/istio/inject" .Values.mutatingWebhook.servicePath }}
+{{- end }}
+{{- define "opa-sidecar-injector.mutatingWebhook.webhookName" -}}
+{{- default "opa-injector.twdps.io" .Values.mutatingWebhook.webhookName }}
+{{- end }}
+{{- define "opa-sidecar-injector.mutatingWebhook.webhookName" -}}
+{{- default "opa-injector.twdps.io" .Values.mutatingWebhook.webhookName }}
+{{- end }}
+{{- define "opa-sidecar-injector.mutatingWebhook.webhookName" -}}
+{{- default "opa-injector.twdps.io" .Values.mutatingWebhook.webhookName }}
+{{- end }}
+
+  # serviceNamespace: "$(NAMESPACE)"
+  # servicePath: "/v0/data/istio/inject"
+  # namespaceSelectorKey: "opa-injection"
+  # namspaceSelectorValue: "enabled"
+  # certPath: "/etc/tls/tls.crt"

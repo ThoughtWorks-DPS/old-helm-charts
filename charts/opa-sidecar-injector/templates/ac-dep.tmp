@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "opa-sidecar-injector.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "opa-sidecar-injector.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "opa-sidecar-injector.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      name: {{ include "opa-sidecar-injector.fullname" . }}
+      namespace: {{ .Release.Namespace }}
+      labels:
+       {{- include "opa-sidecar-injector.selectorLabels" . | nindent 6 }}
+    spec:
+      serviceAccountName: {{ include "opa-sidecar-injector.fullname" . }}
+      {{- if .Values.selfSignedCertificate }}
+      initContainers:
+        - name: certificate-init-container
+          image: {{ .Values.initCertificateImage.repository }}:{{ .Values.initCertificateImage.tag }}
+          imagePullPolicy: {{ .Values.initCertificateImage.pullPolicy }}  
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          args:
+            - "--common-name={{ .opa-sidecar-injector.certificate.commonName }}"
+            - "--organization={{ .opa-sidecar-injector.certificate.organization }}"
+            - "--organizational-unit={{ .opa-sidecar-injector.certificate.organizationalUnit }}"
+            - "--country={{ .opa-sidecar-injector.certificate.country }}"
+            - "--province={{ .opa-sidecar-injector.certificate.province }}"
+            - "--locality={{ .opa-sidecar-injector.certificate.locality }}"
+            - "--street-address={{ .opa-sidecar-injector.certificate.streetAddress }}"
+            - "--postal-code={{ .opa-sidecar-injector.certificate.postalCode }}"
+            - "--service-names={{ .opa-sidecar-injector.certificate.serviceNames }}"
+            - "--namespace={{ .opa-sidecar-injector.mutatingWebhook.serviceNamespace }}"
+            - "--cert-dir={{ .opa-sidecar-injector.certificate.certDir }}"      
+          volumeMounts:
+            - name: tls
+              mountPath: {{ .opa-sidecar-injector.certificate.certDir }}
+
+        - name: mutatingwebhook-init-container
+          image: {{ .Values.initMutatingWebhookImage.repository }}:{{ .Values.initMutatingWebhookImage.tag }}
+          imagePullPolicy: {{ .Values.initMutatingWebhookImage.pullPolicy }}
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          args:
+            - "--object-meta-name={{ .opa-sidecar-injector.mutatingWebhook.objectMeta }}"
+            - "--service-name={{ .opa-sidecar-injector.mutatingWebhook.serviceName }}"
+            - "--service-namespace={{ .opa-sidecar-injector.mutatingWebhook.serviceNamespace }}"
+            - "--service-path={{ .Valopa-sidecar-injectorues.mutatingWebhook.servicePath }}"
+            - "--namespace-selector-key={{ .opa-sidecar-injector.mutatingWebhook.namespaceSelectorKey }}"
+            - "--namespace-selector-value={{ .opa-sidecar-injector.mutatingWebhook.namespaceSelectorValue }}"
+            - "--cert-path={{ .opa-sidecar-injector.mutatingWebhook.certPath }}"
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/tls
+      {{- end }}
+      containers:
+        - name: opa
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          args:
+            - "run"
+            - "--server"
+            - "--tls-cert-file=/etc/tls/tls.crt"
+            - "--tls-private-key-file=/etc/tls/tls.key"
+            - "--addr=0.0.0.0:{{ .Values.service.port }}"
+            - "/policies/inject.rego"
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          livenessProbe:
+            httpGet:
+              path: /health?plugins
+              scheme: HTTPS
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health?plugins
+              scheme: HTTPS
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+          volumeMounts:
+            - name: inject-policy
+              readOnly: true
+              mountPath: /policies
+
+            - name: tls
+              readOnly: true
+              mountPath: /etc/tls
+
+      volumes:
+        - name: inject-policy
+          configMap:
+            name: inject-policy
+
+        {{- if .Values.selfSignedCertificate }}
+        - name: tls
+          emptyDir: {}
+        {{- else }}
+        - name: tls
+          secret:
+            secretName: {{ include "opa-sidecar-injector.fullname" . }}-certificate
+        {{- end }}

@@ -1,0 +1,98 @@
+# Default values for opa-sidecar-injector.
+
+nameOverride: ""
+fullnameOverride: ""
+
+# the openpolicyagent image is designed to be used as a sidecar injector admission controller
+image:
+  repository: openpolicyagent/opa
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+imagePullSecrets: []
+
+# uncomment and add a configmap name to override the default
+# opaSidecarConfig: opa-sidecar-config
+
+serviceAccount:
+  create: true
+  annotations: {}
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+service:
+  type: ClusterIP
+  port: 443
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+resources: {}
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+  
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# set selfSigned to false to manage certificates directly
+selfSignedCertificate: true
+
+certificate: {}
+  # commonName: certificate-init-contianer
+  # organization: Org
+  # organizationalUnit: Unit
+  # country: USA
+  # province: CA
+  # locality: City
+  # streetAddress: Address
+  # postalCode: 10001
+  # serviceNames: {{ include "opa-sidecar-injector.fullname" . }}-admission-controller
+  # certDir: "/etc/tls"
+  #
+  # if selfSignedCertificate is set to false, provide custom certificate information
+  # data will be found at tls.crt and tls.key within kubernetes secret
+  # tlsCrt: |-
+  #   add base64 encoded certificate information
+  # tlsKey: |-
+  #   add base64 encoded private key information
+
+
+initCertificateImage:
+  repository: twdps/certificate-init-container
+  pullPolicy: Always
+  tag: "0.1.0"
+
+mutatingWebhook: {}
+  # webhookName: "opa-injector.twdps.io"
+  # objectMetaName: "opa-injector-admission-controller-webhook"
+  # serviceNames: "opa-injector-admission-controller"
+  # serviceNamespace: "$(NAMESPACE)"
+  # servicePath: "/v0/data/istio/inject"
+  # namespaceSelectorKey: "opa-injection"
+  # namspaceSelectorValue: "enabled"
+  # certPath: "/etc/tls/tls.crt"
+
+initMutatingWebhookImage:
+  repository: openpolicyagent/opa
+  pullPolicy: Always
+  tag: "0.1.0"
+
+#injectionPolicy: {}
+

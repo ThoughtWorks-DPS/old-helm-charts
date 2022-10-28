@@ -1,0 +1,11 @@
+apiVersion: v2
+name: opa-sidecar-injector
+description: |-
+  Deploys mutatingwebhookconfiguration and an instance of openpolicyagent acting as
+  an admission controller to inject opa sidecars into all deployments to namespaces with the
+  defined annotation.
+type: application
+version: 0.1.0
+
+# app version tracks the current release version of https://github.com/open-policy-agent/opa
+appVersion: "0.45.0"

@@ -1,0 +1,12 @@
+{{- if not .Values.selfSignedCertificate -}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name:  {{ include "opa-sidecar-injector.fullname" . }}-certificate
+  namespace: {{ .Release.Namespace }}
+data:
+  tls.crt: |-
+    {{ .Values.certificate.tlsCrt }}
+  tls.key: |-
+    {{ .Values.certificate.tlsKey }}
+{{- end }}
