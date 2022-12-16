@@ -1,0 +1,12 @@
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  port: 443
+  # type: ClusterIP
+
+serviceAccount:
+  create: true
+  annotations: {}
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""

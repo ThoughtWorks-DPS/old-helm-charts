@@ -23,9 +23,9 @@ If you had already added this repo earlier, run `helm repo update` to retrieve t
 
 ### example  
 
-To install the opa-slp-operator chart:  
+To install the opa-sidecar-injector chart:  
 ```bash
-$ helm install opa-slp-operator twdps/opa-slp-operator  
+$ helm install opa-sidecar-injector twdps/opa-sidecar-injector  
 ```
 To uninstall the chart:  
 ```bash
