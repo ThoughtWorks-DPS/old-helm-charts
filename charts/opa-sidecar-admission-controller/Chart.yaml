@@ -9,3 +9,7 @@ version: 0.1.0
 
 # app version tracks the current release version of https://github.com/open-policy-agent/opa
 appVersion: "0.45.0"
+
+maintainers: # (optional)
+  - name: ThoughtWorks EMPC NA Labs
+    url: https://github.com/ThoughtWorks-DPS
