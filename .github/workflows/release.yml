@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  validate-charts:
+  release-charts:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
