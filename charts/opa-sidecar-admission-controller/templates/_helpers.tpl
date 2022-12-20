@@ -61,13 +61,13 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 
 
-# {{/*
-# Expand the service account name
-# */}}
-# {{- define "opa-sidecar-admission-controller.serviceAccountName" -}}
-# {{- if .Values.serviceAccount.create }}
-# {{- default (include "opa-sidecar-admission-controller.fullname" .) .Values.serviceAccount.name }}
-# {{- else }}
-# {{- default "default" .Values.serviceAccount.name }}
-# {{- end }}
-# {{- end }}
+{{/*
+Expand the service account name
+*/}}
+{{- define "opa-sidecar-admission-controller.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create }}
+{{- default (include "opa-sidecar-admission-controller.fullname" .) .Values.serviceAccount.name }}
+{{- else }}
+{{- default "default" .Values.serviceAccount.name }}
+{{- end }}
+{{- end }}
