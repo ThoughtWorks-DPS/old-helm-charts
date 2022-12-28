@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: opa-sidecar-inject-template
+  namespace: {{ .Values.namespace }}
+  
+data:
+  inject.rego: |
+    package istio
+    inject = {
+      "apiVersion": "admission.k8s.io/v1beta1",
+      "kind": "AdmissionReview",
+      "response": {
+        "allowed": true,
+        "patchType": "JSONPatch",
+        "patch": base64.encode(json.marshal(patch)),
+      },
+    }
+    patch = [{
+      "op": "add",
+      "path": "/spec/containers/-",
+      "value": opa_container,
+    }, {
+      "op": "add",
+      "path": "/spec/volumes/-",
+      "value": opa_config_volume,
+    }]
+    opa_container = {
+      "image": "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}-envoy-rootless", 
+      "name": "opa",
+      "args": [
+        "run",
+        "--server",
+        "--ignore=.*",
+        "--config-file=/config/conf.yaml",
+        "--addr=localhost:8181",
+        "--diagnostic-addr=0.0.0.0:8282"
+      ],
+      "readinessProbe": {
+        "httpGet": {
+          "path": "/health?plugins",
+          "scheme": "HTTP",
+          "port": 8282,
+        },
+        "initialDelaySeconds": 5,
+        "periodSeconds": 5,
+      },
+      "livenessProbe": {
+        "httpGet": {
+          "path": "/health?plugins",
+          "scheme": "HTTP",
+          "port": 8282,
+        },
+        "initialDelaySeconds": 5,
+        "periodSeconds": 5,
+      }
+      "volumeMounts": [{
+        "mountPath": "/config",
+        "name": "opa-istio-config",
+      }],
+      
+    }
+    opa_config_volume = {
+      "name": "opa-istio-config",
+      "configMap": {"name": "opa-sidecar-config"},
+    }

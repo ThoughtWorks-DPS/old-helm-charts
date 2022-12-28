@@ -25,9 +25,9 @@ If you had already added this repo earlier, run `helm repo update` to retrieve t
 
 To install the opa-sidecar-injector chart:  
 ```bash
-$ helm install opa-sidecar-injector twdps/opa-sidecar-injector  
+$ helm install opa-sidecar-admission-controller thoughtworks-dps/opa-sidecar-admission-controller  
 ```
 To uninstall the chart:  
 ```bash
-$ helm delete opa-slp-operator
+$ helm delete opa-sidecar-admission-controller
 ```

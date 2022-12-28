@@ -12,4 +12,4 @@ maintainers:
 
 
 # app version tracks the current release version of https://github.com/open-policy-agent/opa
-appVersion: "0.45.0"
+appVersion: "0.47.3"

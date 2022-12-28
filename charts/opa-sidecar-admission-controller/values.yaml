@@ -10,3 +10,38 @@ serviceAccount:
   annotations: {}
   # If not set and create is true, a name is generated using the fullname template
   name: ""
+
+image:
+  repository: openpolicyagent/opa
+  imagePullPolicy: Always
+  tag: ""
+
+# if create=false you may comment out the rest of the values
+selfSignedCertificate:
+  create: true
+  commonName: "SelfSignedCertificate"
+  organization: "Self"
+  organizationalUnit: "SelfUnit"
+  country: "USA"
+  province: "Illinois"
+  locality: "Chicago"
+  streetAddress: "StreetAddress"
+  postalCode: "60601"
+  caDuration: 3
+  additionalDNSNames: "SelfSignedCertificate"
+  hostname: ""
+  subdomain: ""
+  clusterDomain: "cluster.local"
+  namespaceSelectorKey: "opa-injection"
+  namespaceSelectorValue: "enabled"
+  createSecret: false
+
+certificateInitContainerImage:
+  repository: twdps/certificate-init-container
+  imagePullPolicy: Always
+  tag: "0.1.0"
+
+mutatingWebhookInitContainerImage:
+  repository: twdps/mutatingwebhook-init-container
+  imagePullPolicy: Always
+  tag: "0.2.0"
