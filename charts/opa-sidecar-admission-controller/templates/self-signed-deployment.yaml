@@ -9,7 +9,7 @@ metadata:
     {{- include "opa-sidecar-admission-controller.labels" . | nindent 4 }}
 spec:
   selector:
-    matchlabels:
+    matchLabels:
       {{- include "opa-sidecar-admission-controller.selectorLabels" . | nindent 6 }}
   replicas: 1
   template:
