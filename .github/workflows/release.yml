@@ -36,6 +36,11 @@ jobs:
       - name: Run chart-testing (install)
         run: ct install --chart-dirs charts --exclude-deprecated --all
 
+      - name: set github user information
+        run: |
+          git config --global user.email "twdps.io@gmail.com"
+          git config --global user.name "twdpsio"
+          
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.4.1
         env:
