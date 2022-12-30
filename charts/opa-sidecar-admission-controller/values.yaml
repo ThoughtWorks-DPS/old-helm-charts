@@ -3,13 +3,31 @@ fullnameOverride: ""
 
 service:
   port: 443
-  # type: ClusterIP
 
 serviceAccount:
   create: true
   annotations: {}
   # If not set and create is true, a name is generated using the fullname template
   name: ""
+
+sidecarPolicyServerCredentials:
+  create: false
+  credentialConfigmapName: opa-sidecar-policy-server-credentials-configmap
+  # to override the default policy-server credential configuration either, substitute a configmap
+  # name above for one you created to override, or set create=true and supply the custom credential
+  # information below
+  # custom: |
+  #   discovery:
+  #         name: discovery
+  #         service: styra
+  #       labels:
+  #         system-id: f8d1bdca8d134f13985410ee9bd0ad6e
+  #         system-type: template.istio:1.0
+  #       services:
+  #         - name: styra
+  #           url: http://slp-istio-svc.httpbin-local:8080/v1
+  #         - name: styra-bundles
+  #           url: http://slp-istio-svc.httpbin-local:8080/v1/bundles
 
 image:
   repository: openpolicyagent/opa
@@ -34,14 +52,15 @@ selfSignedCertificate:
   clusterDomain: "cluster.local"
   namespaceSelectorKey: "opa-injection"
   namespaceSelectorValue: "enabled"
-  createSecret: false
+  createSecret: true
 
 certificateInitContainerImage:
   repository: twdps/certificate-init-container
   imagePullPolicy: Always
-  tag: "0.1.0"
+  tag: "0.2.4"
 
 mutatingWebhookInitContainerImage:
   repository: twdps/mutatingwebhook-init-container
   imagePullPolicy: Always
   tag: "0.2.0"
+

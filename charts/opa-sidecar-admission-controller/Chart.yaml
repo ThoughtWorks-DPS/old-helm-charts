@@ -5,11 +5,10 @@ description: |-
   an admission controller to inject opa sidecars into all deployments to namespaces with the
   defined annotation.
 type: application
-version: 0.1.2
+version: 0.1.3
 maintainers:
   - name: ThoughtWorks-DPS
     url: https://github.com/ThoughtWorks-DPS
 
-
 # app version tracks the current release version of https://github.com/open-policy-agent/opa
-appVersion: "0.47.3"
+appVersion: 0.47.4

@@ -13,4 +13,4 @@
 6.  See `release.yml` in the workflows folder
 
 
-Iterating on a the `opa-sidecar-injector` deployment as the first chart.  
+Iterating on a the `opa-sidecar-admission-controller` deployment as the first chart.  

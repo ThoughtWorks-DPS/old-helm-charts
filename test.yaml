@@ -1,0 +1,251 @@
+# ---
+# apiVersion: v1
+# kind: Namespace
+# metadata:
+#   name: ci-dev
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tls-test-app
+  namespace: ci-dev
+  labels:
+    app: tls-test-app
+spec:
+  ports:
+    - port: 443
+      name: https
+  selector:
+    app: tls-test-app
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tls-test-app
+  namespace: ci-dev
+  labels:
+    app: tls-test-app
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  # "namespace" omitted since ClusterRoles are not namespaced
+  name: tls-test-app-role
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tls-test-app-role-binding
+subjects:
+- kind: ServiceAccount
+  name: tls-test-app
+  namespace: ci-dev
+roleRef:
+  kind: ClusterRole
+  name:  tls-test-app-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tls-test-app
+  namespace: ci-dev
+  labels:
+    app: tls-test-app
+spec:
+  selector:
+    matchLabels:
+      app: tls-test-app
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: tls-test-app
+    spec:
+      serviceAccountName: tls-test-app
+      initContainers:
+        - name: certificate-init-container
+          image: twdps/certificate-init-container:0.2.4
+          imagePullPolicy: Always
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          args:
+            - "--common-name=tls-test-app"
+            - "--organization='Thoughtworks, Inc.'"
+            - "--organizational-unit=EMPC"
+            - "--country=USA"
+            - "--province=Illinois"
+            - "--locality=Chicago"
+            - "--street-address='200 E Randolph St 25th Floor'"
+            - "--postal-code=60601"
+            - "--service-names=tls-test-app"
+            - "--namespace=$(NAMESPACE)"
+            - "--cert-dir=/etc/tls"            
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/tls
+        - name: mutatingwebhook-init-container
+          image: twdps/mutatingwebhook-init-container:0.2.0
+          imagePullPolicy: Always
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          args:
+            - "--webhook-name=opa-injector.twdps.io"
+            - "--object-meta-name=opa-injector-admission-controller-webhook"
+            - "--service-name=tls-test-app"
+            - "--service-namespace=$(NAMESPACE)"
+            - "--service-path=/v0/data/istio/inject"
+            - "--namespace-selector-key=opa-istio-injection"
+            - "--namespace-selector-value=enabled"
+            - "--cert-path=/etc/tls/tls.crt"
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/tls
+      containers:
+        - name: opa
+          image: openpolicyagent/opa:0.47.3
+          imagePullPolicy: Always
+          args:
+            - "run"
+            - "--server"
+            - "--tls-cert-file=/etc/tls/tls.crt"
+            - "--tls-private-key-file=/etc/tls/tls.key"
+            - "--addr=0.0.0.0:443"
+            - "/policies/inject.rego"
+          ports:
+            - containerPort: 443
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/tls
+            - name: inject-policy
+              readOnly: true
+              mountPath: /policies
+        # - name: tls-test-app
+        #   image: gcr.io/hightowerlabs/tls-app:1.0.0
+        #   imagePullPolicy: Always
+        #   args:
+        #     - "-tls-cert=/etc/tls/tls.crt"
+        #     - "-tls-key=/etc/tls/tls.key"
+        #   ports:
+        #     - containerPort: 443 
+        #   resources:
+        #     limits:
+        #       memory: "50Mi"
+        #       cpu: "100m"
+        #   volumeMounts:
+        #     - name: tls
+        #       mountPath: /etc/tls
+      volumes:
+        - name: tls
+          emptyDir: {}
+        - name: inject-policy
+          configMap:
+            name: opa-sidecar-inject-template
+
+---
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name:  opa-sidecar-inject-template
+  namespace: ci-dev
+  
+data:
+  inject.rego: |
+    package istio
+
+    inject = {
+      "apiVersion": "admission.k8s.io/v1beta1",
+      "kind": "AdmissionReview",
+      "response": {
+        "allowed": true,
+        "patchType": "JSONPatch",
+        "patch": base64.encode(json.marshal(patch)),
+      },
+    }
+
+    patch = [{
+      "op": "add",
+      "path": "/spec/containers/-",
+      "value": opa_container,
+    }, {
+      "op": "add",
+      "path": "/spec/volumes/-",
+      "value": opa_config_volume,
+    }]
+
+    opa_container = {
+      "image": "openpolicyagent/opa:0.47.3-envoy-rootless", 
+      "name": "opa",
+      "args": [
+        "run",
+        "--server",
+        "--ignore=.*",
+        "--config-file=/config/conf.yaml",
+        "--addr=localhost:8181",
+        "--diagnostic-addr=0.0.0.0:8282"
+      ],
+      "readinessProbe": {
+        "httpGet": {
+          "path": "/health?plugins",
+          "scheme": "HTTP",
+          "port": 8282,
+        },
+        "initialDelaySeconds": 5,
+        "periodSeconds": 5,
+      },
+      "livenessProbe": {
+        "httpGet": {
+          "path": "/health?plugins",
+          "scheme": "HTTP",
+          "port": 8282,
+        },
+        "initialDelaySeconds": 5,
+        "periodSeconds": 5,
+      },
+      "volumeMounts": [{
+        "mountPath": "/config",
+        "name": "opa-istio-config",
+      }],
+      
+    }
+
+    opa_config_volume = {
+      "name": "opa-istio-config",
+      "configMap": {"name": "opa-istio-config"},
+    }
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: opa-istio-config
+  namespace: ci-dev
+data:
+  conf.yaml: |
+    discovery:
+      name: discovery
+      service: styra
+    labels:
+      system-id: f8d1bdca8d134f13985410ee9bd0ad6e
+      system-type: template.istio:1.0
+    services:
+      - name: styra
+        url: http://slp-istio-svc.httpbin-local:8080/v1
+      - name: styra-bundles
+        url: http://slp-istio-svc.httpbin-local:8080/v1/bundles
