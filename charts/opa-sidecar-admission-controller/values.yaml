@@ -63,4 +63,3 @@ mutatingWebhookInitContainerImage:
   repository: twdps/mutatingwebhook-init-container
   imagePullPolicy: Always
   tag: "0.2.0"
-
